@@ -1,0 +1,40 @@
+# The publishing robot. When you commit an update into updates/ (the editor's Publish button takes you there), this checks it,
+# adds it to kobalt-feed.json, signs that with the key in this repo's secret vault, and publishes it. Only runs for the repo's owner.
+name: Publish the Kobalt feed
+
+on:
+  push:
+    branches: [main]
+    paths: ["updates/*.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: publish-feed
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check, merge and sign
+        env:
+          FEED_KEY: ${{ secrets.FEED_SIGNING_KEY }}
+        run: node tools/publish.mjs
+      - name: Save it
+        run: |
+          git config user.name "kobalt-feed-robot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A kobalt-feed.json updates
+          if git diff --cached --quiet; then echo "Nothing changed."; exit 0; fi
+          git commit -m "Publish the feed"
+          git push
+      - name: Put it on the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "Pages will pick it up on its own."

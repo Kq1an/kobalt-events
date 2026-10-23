@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- No outside scripts, styles or connections: the page only reads this site's own feed. Publishing happens on GitHub, behind your login. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kobalt Event Editor</title>
+<style>
+:root { --bg:#0b0f17; --card:#131a26; --card2:#18212f; --line:#26324a; --text:#e6ecf5; --muted:#8a97ad; --accent:#5b8cff; --good:#3fcf74; --bad:#ff5a6a; --warn:#ffb84a; }
+* { box-sizing:border-box; }
+html, body { background:var(--bg); }
+body { margin:0; color:var(--text); font:14px/1.45 system-ui, "Segoe UI", sans-serif; padding-bottom:84px; }
+header { padding:14px 22px; border-bottom:1px solid var(--line); background:#0e1420; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+header h1 { margin:0; font-size:19px; } header p { margin:0; color:var(--muted); font-size:13px; flex:1; min-width:240px; }
+nav { display:flex; gap:6px; padding:10px 22px 0; max-width:1240px; margin:0 auto; flex-wrap:wrap; }
+nav button { background:transparent; color:var(--muted); border:1px solid var(--line); border-bottom:0; border-radius:8px 8px 0 0; padding:8px 14px; font-weight:600; }
+nav button.on { background:var(--card); color:var(--text); }
+main { max-width:1240px; margin:0 auto; padding:0 16px; }
+.tab { display:none; } .tab.on { display:block; }
+.cols { display:grid; grid-template-columns:minmax(0, 1.15fr) minmax(320px, 0.85fr); gap:16px; align-items:start; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0; }
+.card h2 { margin:0 0 10px; font-size:15px; }
+.sticky { position:sticky; top:10px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; }
+.full { grid-column:1 / -1; }
+label { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:3px; }
+label .n { color:#5d6a80; }
+input, select, textarea { width:100%; background:#0d131d; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:7px 9px; font:inherit; }
+input[type=color] { padding:2px; height:34px; width:64px; cursor:pointer; }
+input[type=checkbox] { width:auto; }
+textarea { min-height:90px; resize:vertical; }
+button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:7px 13px; font:inherit; font-weight:600; cursor:pointer; }
+button.ghost { background:transparent; border:1px solid var(--line); color:var(--text); font-weight:normal; }
+button.small { padding:4px 9px; font-size:12px; }
+button.on { outline:2px solid var(--accent); }
+button.danger { background:transparent; border:1px solid var(--bad); color:var(--bad); font-weight:normal; }
+button:disabled { opacity:.45; cursor:default; }
+.row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.chips button { background:transparent; border:1px solid var(--line); color:var(--text); font-weight:normal; padding:4px 10px; font-size:12px; }
+.chips button.on { background:var(--accent); border-color:var(--accent); color:#fff; outline:none; }
+.hint { color:var(--muted); font-size:12px; margin:4px 0 0; }
+.msg { margin-top:10px; padding:8px 11px; border-radius:6px; display:none; white-space:pre-wrap; font-size:13px; }
+.msg.ok { display:block; background:rgba(63,207,116,.12); color:var(--good); }
+.msg.err { display:block; background:rgba(255,90,106,.12); color:var(--bad); }
+.msg.info { display:block; background:rgba(91,140,255,.12); color:#a9c2ff; }
+.mock { border:1px solid var(--accent); border-radius:6px; background:#0f1520; padding:8px 10px; margin-top:8px; font-family:ui-monospace, Consolas, monospace; font-size:12px; }
+.tag { display:inline-block; padding:0 6px; border-radius:4px; font-size:11px; margin-right:6px; }
+.item { display:flex; gap:10px; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--line); border-radius:6px; margin:6px 0; background:var(--card2); }
+.item .t { font-weight:600; } .item .s { color:var(--muted); font-size:12px; }
+.pe { border:1px solid var(--line); border-radius:8px; padding:10px; margin-top:8px; background:var(--card2); }
+.pe canvas { border:1px solid var(--line); border-radius:4px; cursor:crosshair; touch-action:none; image-rendering:pixelated; max-width:100%; }
+.pe .tools button { padding:4px 8px; font-size:12px; font-weight:normal; background:transparent; border:1px solid var(--line); color:var(--text); }
+.pe .tools button.on { background:var(--accent); border-color:var(--accent); }
+.sw { width:20px; height:20px; border-radius:4px; border:1px solid var(--line); cursor:pointer; display:inline-block; }
+#view { width:100%; height:auto; background:radial-gradient(ellipse at 50% 40%, #1a2436, #0d131d); border-radius:8px; cursor:grab; touch-action:none; }
+#bar { position:fixed; left:0; right:0; bottom:0; background:#0e1420; border-top:1px solid var(--line); padding:12px 22px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; z-index:9; }
+#bar .what { flex:1; min-width:220px; color:var(--muted); }
+#bar .what b { color:var(--text); }
+.status-live { color:var(--good); } .status-soon { color:var(--warn); } .status-over { color:var(--muted); }
+ol.steps { margin:6px 0; padding-left:20px; } ol.steps li { margin:4px 0; }
+@media (max-width:900px) { .cols { grid-template-columns:1fr; } .sticky { position:static; } .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kobalt Event Editor</h1>
+  <p>Make challenges, new looks and news for everyone with Kobalt. Publishing goes through your GitHub login (password + 2FA) - nobody else can publish.</p>
+</header>
+<nav>
+  <button data-tab="tChallenge" class="on">Challenge</button>
+  <button data-tab="tNews">News</button>
+  <button data-tab="tLive">Live feed</button>
+  <button data-tab="tHelp">How it works</button>
+</nav>
+<main>
+
+<!-- ======================================================== challenge -->
+<section class="tab on" id="tChallenge">
+ <div class="cols">
+  <div>
+   <div class="card">
+    <h2 id="cHeading">New challenge</h2>
+    <div class="grid">
+     <div class="full"><label>Title <span class="n" data-count="cTitle"></span></label><input id="cTitle" maxlength="48" placeholder="Night Owl"></div>
+     <div class="full"><label>Description <span class="n" data-count="cDesc"></span></label><input id="cDesc" maxlength="300" placeholder="The night shift pays off. Mine in the dark for a glowing sticker."></div>
+     <div><label>Task</label><select id="cTask"></select></div>
+     <div><label>How many</label><input id="cGoal" type="number" min="1" max="1000000000" value="500"></div>
+     <div class="full"><label>Starts</label>
+      <div class="row"><input id="cStart" type="datetime-local" style="max-width:240px">
+       <div class="chips row" id="cStartChips"><button data-start="now">Now</button><button data-start="tomorrow">Tomorrow</button><button data-start="monday">Next Monday</button><button data-start="saturday">This weekend</button></div></div></div>
+     <div class="full"><label>Lasts</label>
+      <div class="row"><div class="chips row" id="cLenChips"><button data-len="1">1 day</button><button data-len="3">3 days</button><button data-len="7" class="on">1 week</button><button data-len="14">2 weeks</button><button data-len="30">1 month</button></div>
+       <input id="cDays" type="number" min="0" max="366" value="7" style="width:76px"> days <input id="cHours" type="number" min="0" max="23" value="0" style="width:64px"> hours</div>
+      <p class="hint" id="cTime"></p></div>
+     <div><label>Theme colour</label><input id="cTheme" type="color" value="#5b8cff"></div>
+     <div><label>Icon</label><select id="cIcon"></select></div>
+     <div class="full row"><input type="checkbox" id="cFeatured" checked><label for="cFeatured" style="margin:0">Announce it with a pop-up when it reaches players</label></div>
+    </div>
+   </div>
+   <div class="card">
+    <h2>Reward</h2>
+    <div class="grid">
+     <div><label>Look's name <span class="n" data-count="rName"></span></label><input id="rName" maxlength="40" placeholder="Glow Sticker"></div>
+     <div><label>Icon in the list</label><select id="rIcon"></select></div>
+     <div class="full"><label>Rarity</label><div class="chips row" id="rRarity"></div></div>
+     <div class="full"><label>Look's description <span class="n" data-count="rDesc"></span></label><input id="rDesc" maxlength="120" placeholder="It glows. Mostly."></div>
+     <div class="full"><label>Kind</label><div class="chips row" id="rSlot"><button data-slot="STICKER" class="on">Sticker</button><button data-slot="HEAD">Hat</button><button data-slot="LAPTOP">Laptop</button><button data-slot="OUTFIT">Outfit</button></div></div>
+     <div class="full" id="rModelBox"><label>Made from</label><select id="rModel"></select></div>
+     <div class="full" id="rColours"></div>
+     <div class="full" id="rArt"></div>
+    </div>
+   </div>
+   <div class="row"><button id="cAdd">Add to my changes</button><button class="ghost" id="cReset">New / clear the form</button></div>
+   <div class="msg" id="cMsg"></div>
+  </div>
+  <div class="sticky">
+   <div class="card">
+    <h2>Preview</h2>
+    <canvas id="view" width="560" height="520"></canvas>
+    <div class="row" style="margin-top:6px"><button class="ghost small" id="vSpin">Spin: on</button><button class="ghost small" data-view="0">Front</button><button class="ghost small" data-view="3.14">Back</button><button class="ghost small" data-view="-1.2">Side</button>
+     <span class="hint">Drag to turn him. This is the game's own model.</span></div>
+    <div class="mock" id="mToast"></div>
+    <div class="mock" id="mRow"></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- ======================================================== news -->
+<section class="tab" id="tNews">
+ <div class="cols">
+  <div class="card">
+   <h2 id="nHeading">New news post</h2>
+   <div class="grid">
+    <div class="full"><label>Title <span class="n" data-count="nTitle"></span></label><input id="nTitle" maxlength="80" placeholder="Kobalt 1.1 is out"></div>
+    <div><label>Type</label><select id="nKind"><option value="update">Update (patch notes)</option><option value="cosmetic">New look</option><option value="event">Event</option><option value="notice">Notice</option></select></div>
+    <div><label>Version (optional)</label><input id="nVersion" maxlength="20" placeholder="1.1.0"></div>
+    <div><label>Date</label><input id="nDate" type="date"></div>
+    <div class="row" style="align-items:flex-end"><input type="checkbox" id="nPinned"><label for="nPinned" style="margin:0">Pin it to the top</label></div>
+    <div class="full"><label>Text (plain text, new lines are kept) <span class="n" data-count="nBody"></span></label><textarea id="nBody" maxlength="2000" placeholder="- Kobby rests in your hotbar now&#10;- New: the trophy shelf"></textarea></div>
+   </div>
+   <div class="row" style="margin-top:10px"><button id="nAdd">Add to my changes</button><button class="ghost" id="nReset">New / clear</button></div>
+   <div class="msg" id="nMsg"></div>
+  </div>
+  <div class="card sticky">
+   <h2>How it looks in the game</h2>
+   <div class="mock" id="mNews" style="border-color:#26324a; white-space:pre-wrap"></div>
+  </div>
+ </div>
+</section>
+
+<!-- ======================================================== live -->
+<section class="tab" id="tLive">
+ <div class="card">
+  <h2>What's live on your site</h2>
+  <p class="hint" id="lStatus">Loading...</p>
+  <div id="lList"></div>
+ </div>
+</section>
+
+<!-- ======================================================== help -->
+<section class="tab" id="tHelp">
+ <div class="card">
+  <h2>How publishing works</h2>
+  <ol class="steps">
+   <li>Make a challenge (with its reward) or a news post, and click <b>Add to my changes</b>. Add as many as you like.</li>
+   <li>Click <b>Publish</b> at the bottom. GitHub opens with your update already filled in - log in (password + 2FA) if it asks, and click <b>Commit changes</b>.</li>
+   <li>The robot in your repo checks it (same rules as the mod), adds it to the feed, signs it with the key in the repo's secret vault, and puts it on the site. That takes about a minute: see it here under <b>Live feed</b>.</li>
+   <li>Everyone's Kobalt picks it up within about 3 hours.</li>
+  </ol>
+  <p class="hint">To change something that's live: Live feed - Edit - change it - Add to my changes - Publish (it replaces the old one). Removing a look is fine: players who won it keep it.</p>
+  <p class="hint">If something gets rejected, the robot puts it in updates/rejected with a note saying why.</p>
+ </div>
+</section>
+</main>
+
+<div id="bar">
+ <div class="what" id="bWhat">No changes yet.</div>
+ <button id="bPublish" disabled>Publish</button>
+ <button class="ghost" id="bDownload" disabled>Download the update instead</button>
+ <button class="ghost" id="bClear" disabled>Clear my changes</button>
+</div>
+
+<script>
+"use strict";
+(() => {
+const $ = id => document.getElementById(id);
+const REPO = "Kq1an/kobalt-events";
+
+// ---------------------------------------------------------------- what the mod knows (keep in step with trophy/Feed.java and tools/publish.mjs)
+const TASKS = [["mined","Mine blocks"],["ores","Mine ores"],["ore_diamond","Mine diamond ore"],["ore_debris","Mine ancient debris"],["ore_iron","Mine iron ore"],
+ ["ore_gold","Mine gold ore"],["ore_coal","Mine coal ore"],["mined.night","Mine blocks at night"],["mined.deepslate","Mine deepslate"],["mined.nether","Mine blocks in the Nether"],
+ ["mined.end","Mine blocks in the End"],["mined.log","Chop logs"],["placed","Place blocks in builds"],["builds","Finish builds"],["areas","Mine out areas"],
+ ["steps","Finish goal steps"],["plans","Finish plans"],["amt.CRAFT","Craft items"],["amt.SMELT","Smelt items"],["amt.FISH","Catch fish"],["amt.FARM","Harvest crops"],
+ ["amt.BREED","Breed animals"],["amt.TRADE","Trade with villagers"],["amt.BARTER","Barter with piglins"],["amt.BREW","Brew potions"],["step.ENCHANT","Enchant items"],
+ ["step.GO_TO","Go places"],["kills","Defeat mobs"],["kill.zombie","Defeat zombies"],["kill.skeleton","Defeat skeletons"],["kill.creeper","Defeat creepers"],
+ ["kill.enderman","Defeat endermen"],["dragon","Defeat the ender dragon"],["days","Live through days"],["nights","Sleep through nights"],["meals","Eat"],
+ ["escapes","Get back to full health from 2 hearts"],["fights","Win fights"],["pets","Pet Kobby"],["tricks","Watch Kobby do tricks"],["chats","Talk to Kobby"]];
+const ITEMS = ["clock","diamond","emerald","gold_ingot","iron_ingot","netherite_ingot","nether_star","ender_eye","ender_pearl","blaze_rod","amethyst_shard",
+ "lapis_lazuli","redstone","glowstone_dust","firework_rocket","cake","cookie","golden_apple","totem_of_undying","heart_of_the_sea","dragon_egg","dragon_head",
+ "creeper_head","skeleton_skull","jack_o_lantern","carved_pumpkin","snowball","sunflower","poppy","cod","tropical_fish","bone","feather","string","paper","book",
+ "writable_book","name_tag","bell","lantern","torch","compass","filled_map","spyglass","diamond_pickaxe","diamond_sword","bow","shield","elytra","leather_helmet",
+ "white_wool","red_wool","black_wool","light_blue_wool","pink_dye","red_dye","black_dye","lime_dye","quartz_block","obsidian","glass","beacon"];
+const MODELS = {
+ HEAD: {beanie:["Beanie",[["Knit","#2f6fb5"],["Cuff","#24589a"],["Pom-pom","#f2f4f8"]]], bucket_hat:["Bucket hat",[["Canvas","#d8c69a"],["Band","#8e7b52"]]],
+  earmuffs:["Earmuffs",[["Band","#7e93b8"],["Fluff","#f7f3f5"]]], bunny_ears:["Bunny ears",[["Fur","#f5f5f7"],["Inside","#f2a7c3"]]],
+  party:["Party hat",[["Stripe 1","#e84a8a"],["Stripe 2","#4ab8e8"],["Stripe 3","#e8d04a"]]], santa:["Santa hat",[["Hat","#d42a34"],["Fur","#f4f4f4"]]],
+  pumpkin:["Pumpkin head",[["Pumpkin","#e8862a"],["Glow","#ffd25a"]]], hacker_mask:["Hacker mask",[["Mask","#f0e8d8"],["Lines","#16161a"],["Eyes","#5cff8a"],["Cheeks","#e58a8a"]]],
+  heart_antenna:["Antenna gem",[["Gem","#ff3b5c"]]]},
+ LAPTOP: {silver:["Classic laptop",[["Body","#a9b4c8"],["Edge","#7c879c"],["Logo","#3f6fe0"]]], gamer:["Pro laptop",[["Body","#1c1f27"],["Edge","#0e1015"],["Glow","#39d6ff"]]],
+  white_beast:["Big laptop",[["Body","#f6f7fa"],["Edge","#d6dae1"],["Logo","#d11b26"]]], pumpkin_laptop:["Carved laptop",[["Body","#e8862a"],["Edge","#b65e14"],["Face","#ffd25a"]]]},
+ OUTFIT: {custom:["Outfit",[["Body","#24252c"],["Trim","#d11b26"],["Eyes","#ff3a3a"]]]}
+};
+const RARITY = [["copper","Copper","#e0875a"],["iron","Iron","#d8dce2"],["gold","Gold","#ffd24a"],["diamond","Diamond","#5fe3e3"],["netherite","Netherite","#a78bb0"],["bedrock","Bedrock","#b0b0b6"]];
+
+// ---------------------------------------------------------------- small helpers
+function msg(id, kind, text) { const m = $(id); m.className = "msg " + kind; m.textContent = text; }
+function clean(s, n, lines) {
+  let out = "";
+  for (const ch of String(s || "")) { const c = ch.codePointAt(0);
+    if (ch === "\n" && lines) out += ch; else if (c >= 32 && c !== 0xA7 && c !== 0x7F && c <= 0xFFFF && !(c >= 0xD800 && c <= 0xDFFF)) out += ch;
+    if (out.length >= n) break; }
+  return out.trim();
+}
+function slug(s) { const b = clean(s, 30).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "x";
+  const r = new Uint8Array(3); crypto.getRandomValues(r); return b + "-" + Array.from(r, x => x.toString(16).padStart(2, "0")).join(""); }
+function fill(sel, pairs) { sel.innerHTML = ""; for (const [v, t] of pairs) { const o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); } }
+function pad(n) { return String(n).padStart(2, "0"); }
+function localInput(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+function localDay(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function hexRgb(h) { return [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)); }
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function recall(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+
+// tabs and character counters
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.id === b.dataset.tab));
+  if (b.dataset.tab === "tLive") loadLive();
+});
+function counters() { document.querySelectorAll("[data-count]").forEach(s => { const i = $(s.dataset.count); s.textContent = i.value.length + " / " + i.maxLength; }); }
+
+// ================================================================ the 3D preview: the game's own model and projection (kobby/Body3D.java)
+const TILT = 0.34, CT = Math.cos(TILT), ST = Math.sin(TILT);
+const LIGHT = (() => { const v = [-0.38, 0.74, 0.56], n = Math.hypot(...v); return v.map(x => x / n); })();
+const I = () => [1,0,0,0, 0,1,0,0, 0,0,1,0];
+function mul(a, b) { const r = new Array(12); for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) r[i*4+j] = a[i*4]*b[j] + a[i*4+1]*b[4+j] + a[i*4+2]*b[8+j] + (j === 3 ? a[i*4+3] : 0); return r; }
+const T = (m, x, y, z) => mul(m, [1,0,0,x, 0,1,0,y, 0,0,1,z]);
+const RX = (m, a) => { const c = Math.cos(a), s = Math.sin(a); return mul(m, [1,0,0,0, 0,c,-s,0, 0,s,c,0]); };
+const RY = (m, a) => { const c = Math.cos(a), s = Math.sin(a); return mul(m, [c,0,s,0, 0,1,0,0, -s,0,c,0]); };
+const RZ = (m, a) => { const c = Math.cos(a), s = Math.sin(a); return mul(m, [c,-s,0,0, s,c,0,0, 0,0,1,0]); };
+const SC = (m, k) => mul(m, [k,0,0,0, 0,k,0,0, 0,0,k,0]);
+const P = (m, x, y, z) => [m[0]*x+m[1]*y+m[2]*z+m[3], m[4]*x+m[5]*y+m[6]*z+m[7], m[8]*x+m[9]*y+m[10]*z+m[11]];
+const DIR = (m, x, y, z) => { const v = [m[0]*x+m[1]*y+m[2]*z, m[4]*x+m[5]*y+m[6]*z, m[8]*x+m[9]*y+m[10]*z], n = Math.hypot(...v) || 1; return v.map(q => q / n); };
+const FACES = [[0,4,7,3],[1,2,6,5],[0,1,5,4],[3,7,6,2],[0,3,2,1],[4,5,6,7]], NORMALS = [[-1,0,0],[1,0,0],[0,-1,0],[0,1,0],[0,0,-1],[0,0,1]];
+function shade(hex, k) { const c = hexRgb(hex); return "rgb(" + c.map(v => Math.max(0, Math.min(255, Math.round(v * k)))).join(",") + ")"; }
+function mix(a, b, t) { const x = hexRgb(a), y = hexRgb(b); return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join(""); }
+function dark(hex, k) { return mix(hex, "#000000", k); }
+
+class Painter {
+  constructor(ctx) { this.ctx = ctx; this.faces = []; }
+  anchor(x, y, s) { this.ax = x; this.ay = y; this.s = s; this.faces = []; }
+  proj(p) { return [this.ax + p[0] * this.s, this.ay - (p[1] * CT - p[2] * ST) * this.s]; }
+  box(m, x0, y0, z0, x1, y1, z1, col, glow) {
+    const cs = [[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]].map(c => P(m, ...c));
+    const out = [];
+    for (let f = 0; f < 6; f++) {
+      const n = DIR(m, ...NORMALS[f]);
+      if (n[1] * ST + n[2] * CT <= 0.0001) continue;
+      const pts = FACES[f].map(k => cs[k]);
+      const ny = n[1] * CT - n[2] * ST, nz = n[1] * ST + n[2] * CT;
+      const lit = glow ? 1.08 : 0.56 + 0.46 * Math.max(0, n[0] * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]);
+      const face = {p: pts.map(q => this.proj(q)), d: pts.reduce((a, q) => a + q[1] * ST + q[2] * CT, 0) / 4, c: shade(col, lit), dec: []};
+      this.faces.push(face); out[f] = face;
+    }
+    return out;
+  }
+  decal(face, m, pts, col) { if (face) face.dec.push({p: pts.map(q => this.proj(P(m, ...q))), c: col}); }
+  rect(face, m, x0, y0, x1, y1, z, col) { this.decal(face, m, [[x0,y0,z],[x1,y0,z],[x1,y1,z],[x0,y1,z]], col); }
+  rectY(face, m, x0, z0, x1, z1, y, col) { this.decal(face, m, [[x0,y,z0],[x1,y,z0],[x1,y,z1],[x0,y,z1]], col); }
+  flush() {
+    const g = this.ctx;
+    this.faces.sort((a, b) => a.d - b.d);
+    const poly = (p, c) => { g.beginPath(); g.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) g.lineTo(p[i][0], p[i][1]); g.closePath(); g.fillStyle = c; g.strokeStyle = c; g.lineWidth = 0.6; g.fill(); g.stroke(); };
+    for (const f of this.faces) { poly(f.p, f.c); for (const d of f.dec) poly(d.p, d.c); }
+  }
+}
+
+/** Kobby sat with his laptop on his lap, in a look: {head, headCols, laptop, lapCols, lid, screen, outfit, fitCols, sticker}. */
+function drawKobby(pt, L, yaw, t) {
+  const HIP = 4.6, TORSO = 5.4, HEAD = 7.4, ANT = 4.2, hs = 1.09, top = HEAD - 0.3;
+  const styled = !!L.fitCols, theme = "#5b8cff";
+  const main = styled ? L.fitCols[0] : theme, trim = styled ? L.fitCols[1] : null, eyeC = styled ? L.fitCols[2] : "#b8e4ff";
+  const limb = mix(main, "#000000", 0.06), end = styled ? dark(trim, 0.15) : dark(main, 0.16), joint = styled ? dark(main, 0.35) : dark(main, 0.3), glove = styled ? dark(trim, 0.08) : dark(main, 0.36);
+  const root = RY(T(I(), 0, -HIP, 0), yaw), pelvis = T(root, 0, HIP, 0), torso = RX(pelvis, 0.22);
+  for (const sx of [1.35, -1.35]) {
+    const thigh = RX(T(pelvis, sx, 0, 0), -1.5); pt.box(thigh, -1, -2.4, -1, 1, 0.2, 1, limb);
+    const shin = RX(T(thigh, 0, -2.4, 0), sx > 0 ? 0.28 : 0.22); pt.box(shin, -0.9, -2.2, -0.9, 0.9, 0.1, 0.9, limb);
+    const foot = T(shin, 0, -2.2, 0); const ff = pt.box(foot, -1.05, -0.9, -1, 1.05, 0, 1.9, end); pt.rect(ff[5], foot, -1.05, -0.9, 1.05, -0.55, 1.92, dark(end, 0.2));
+  }
+  pt.box(pelvis, -2.6, -0.9, -1.7, 2.6, 0.3, 1.7, joint);
+  const body = pt.box(torso, -3, 0, -2, 3, TORSO, 2, main);
+  pt.rect(body[5], torso, -1.1, 2.9, 1.1, 4.5, 2.02, dark(main, 0.3));
+  pt.rect(body[5], torso, -0.75, 3.2, 0.75, 4.2, 2.03, styled ? mix(trim, "#ffffff", 0.15) : "#cfe6ff");
+  pt.rect(body[5], torso, -2.4, 0.6, 2.4, 1.05, 2.02, styled ? trim : dark(main, 0.22));
+  if (styled) {
+    pt.rect(body[5], torso, -3, 1.2, -2.5, TORSO - 0.6, 2.02, trim); pt.rect(body[5], torso, 2.5, 1.2, 3, TORSO - 0.6, 2.02, trim);
+    pt.box(torso, -2.4, TORSO - 0.55, -1.8, 2.4, TORSO + 0.45, 1.8, dark(trim, 0.04));
+    pt.box(RZ(T(torso, -1.5, TORSO - 0.35, 1.8), 0.12), -0.65, -3.1, 0, 0.65, 0, 0.4, dark(trim, 0.25));
+  }
+  pt.box(torso, -1, TORSO - 0.1, -1, 1, TORSO + 0.5, 1, joint);
+  const head = SC(RX(T(torso, 0, TORSO + 0.3, 0), 0.12), hs);
+  const hf = pt.box(head, -4, 0, -3.4, 4, top, 3.4, main);
+  pt.box(head, -4.55, 2.6, -0.9, -3.95, 4.4, 0.9, joint); pt.box(head, 3.95, 2.6, -0.9, 4.55, 4.4, 0.9, joint);
+  // face: a dark visor and happy eyes (they blink now and then)
+  const z = 3.42, visor = styled ? "#0a0a0d" : "#131b33", blink = (t % 4) < 0.12;
+  pt.rect(hf[5], head, -3.1, 3.0, 3.1, 6.1, z, visor);
+  for (const ex of [-2.3, 0.9]) {
+    if (blink) pt.rect(hf[5], head, ex, 4.2, ex + 1.4, 4.6, z + 0.01, eyeC);
+    else { pt.decal(hf[5], head, [[ex,4.4,z+0.01],[ex+0.7,5.3,z+0.01],[ex+0.7,4.7,z+0.01],[ex,3.8,z+0.01]], eyeC); pt.decal(hf[5], head, [[ex+0.7,5.3,z+0.01],[ex+1.4,4.4,z+0.01],[ex+1.4,3.8,z+0.01],[ex+0.7,4.7,z+0.01]], eyeC); }
+  }
+  pt.rect(hf[5], head, -0.7, 1.6, 0.7, 1.85, z, "#283048");
+  hat(pt, head, hf, L, top);
+  // antenna, and its gem (or a heart)
+  const ant = T(head, 1.2, top, -0.8);
+  pt.box(ant, -0.3, 0, -0.3, 0.3, ANT - 1.2, 0.3, mix(main, "#ffffff", 0.35));
+  if (L.head === "heart_antenna") {
+    const hm = T(ant, 0, ANT - 0.4, 0), red = (L.headCols || [])[0] || "#ff3b5c";
+    pt.box(hm, -1.15, -0.1, -0.45, -0.05, 1, 0.45, red, true); pt.box(hm, 0.05, -0.1, -0.45, 1.15, 1, 0.45, red, true);
+    pt.box(RZ(T(hm, 0, -0.25, 0), 0.785), -0.8, -0.8, -0.42, 0.8, 0.8, 0.42, red, true);
+  } else pt.box(RX(RY(T(ant, 0, ANT - 0.6, 0), 0.785), 0.615), -0.85, -0.85, -0.85, 0.85, 0.85, 0.85, styled ? mix(trim, "#ffffff", 0.2) : "#dff1ff", true);
+  // arms reaching for the keys
+  for (const sgn of [1, -1]) {
+    const k = t * 14 + (sgn > 0 ? 0 : 2.1), tap = Math.max(0, Math.sin(k)) * 0.12;
+    const upper = RZ(RX(T(torso, sgn * 3.65, TORSO - 0.7, 0), -1.15 - tap), sgn * 0.1);
+    pt.box(upper, -0.95, -0.6, -0.95, 0.95, 0.75, 0.95, joint); pt.box(upper, -0.8, -2.7, -0.8, 0.8, 0.2, 0.8, limb);
+    const fore = RX(T(upper, 0, -2.7, 0), -0.55); pt.box(fore, -0.7, -2.4, -0.7, 0.7, 0.1, 0.7, limb);
+    pt.box(T(fore, 0, -2.4, 0), -0.9, -1.5, -0.9, 0.9, 0.1, 0.9, glove);
+  }
+  laptop(pt, L, 3.35 * Math.sin(yaw), 1.0, 3.35 * Math.cos(yaw), yaw + Math.PI, 0.72);
+}
+
+function hat(pt, head, hf, L, top) {
+  const c = (i, d) => (L.headCols && L.headCols[i]) || d, h = L.head;
+  if (h === "hacker_mask") {
+    const plate = c(0, "#f0e8d8"), ink = c(1, "#16161a"), glow = c(2, "#5cff8a"), cheek = c(3, "#e58a8a");
+    const mf = pt.box(head, -3.5, 0.3, 3.2, 3.5, 6.8, 3.95, plate), z = 3.96, zz = 3.97;
+    if (!mf[5]) return;
+    for (const ex of [-2.5, 0.6]) { pt.decal(mf[5], head, [[ex,4.1,z],[ex+1.9,4.3,z],[ex+1.9,4.9,z],[ex,4.6,z]], ink); pt.decal(mf[5], head, [[ex+0.35,4.3,zz],[ex+1.55,4.45,zz],[ex+1.55,4.7,zz],[ex+0.35,4.55,zz]], glow); }
+    pt.decal(mf[5], head, [[-2.9,5.35,z],[-0.6,5.85,z],[-0.6,6.15,z],[-2.9,5.7,z]], ink); pt.decal(mf[5], head, [[0.6,5.85,z],[2.9,5.35,z],[2.9,5.7,z],[0.6,6.15,z]], ink);
+    pt.rect(mf[5], head, -3.05, 2.7, -2.05, 3.35, z, cheek); pt.rect(mf[5], head, 2.05, 2.7, 3.05, 3.35, z, cheek);
+    pt.decal(mf[5], head, [[-0.15,2.5,z],[-2.4,2.95,z],[-2.4,3.3,z],[-0.15,2.85,z]], ink); pt.decal(mf[5], head, [[0.15,2.85,z],[2.4,3.3,z],[2.4,2.95,z],[0.15,2.5,z]], ink);
+    pt.decal(mf[5], head, [[-1.5,2.05,z],[1.5,2.05,z],[1.2,1.8,z],[-1.2,1.8,z]], ink); pt.decal(mf[5], head, [[-0.35,1.55,z],[0.35,1.55,z],[0.12,0.6,z],[-0.12,0.6,z]], ink);
+  } else if (h === "santa") {
+    const red = c(0, "#d42a34"), fur = c(1, "#f4f4f4"); pt.box(head, -4.2, top - 0.2, -3.6, 4.2, top + 1, 3.6, fur);
+    const h1 = RZ(T(head, 0, top + 1, 0), -0.25); pt.box(h1, -3.4, 0, -3, 3.4, 1.8, 3, red); pt.box(h1, -2.2, 1.8, -2, 2.2, 3.4, 2, red); pt.box(h1, -1, 3.4, -1, 1, 4.6, 1, red); pt.box(h1, 0, 4, -0.9, 1.8, 5.6, 0.9, fur);
+  } else if (h === "pumpkin") {
+    const skin = c(0, "#e8862a"), lit = c(1, "#ffd25a"), pf = pt.box(head, -4.5, -0.2, -3.9, 4.5, top + 0.5, 3.9, skin), z = 3.92;
+    pt.decal(pf[5], head, [[-2.8,4,z],[-1,4,z],[-1.9,5.4,z],[-1.9,5.4,z]], lit); pt.decal(pf[5], head, [[1,4,z],[2.8,4,z],[1.9,5.4,z],[1.9,5.4,z]], lit);
+    pt.decal(pf[5], head, [[-2.6,1.6,z],[2.6,1.6,z],[2,2.8,z],[-2,2.8,z]], lit); pt.box(head, -0.5, top + 0.5, -0.5, 0.5, top + 1.7, 0.5, "#4e7a2a");
+  } else if (h === "party") {
+    const h1 = RZ(T(head, -1.6, top, 0.4), 0.2), cols = [c(0, "#e84a8a"), c(1, "#4ab8e8"), c(2, "#e8d04a")];
+    for (let i = 0; i < 4; i++) { const w = 1.8 - i * 0.42; pt.box(h1, -w, i * 1.1, -w, w, (i + 1) * 1.1, w, cols[i % 3]); }
+    pt.box(h1, -0.45, 4.4, -0.45, 0.45, 5.2, 0.45, "#ffffff", true);
+  } else if (h === "beanie") {
+    const knit = c(0, "#2f6fb5"), cuff = c(1, "#24589a"), pom = c(2, "#f2f4f8");
+    const bf = pt.box(head, -4.25, top - 2.2, -3.65, 4.25, top + 1.1, 3.65, knit);
+    for (let i = -3; i <= 3; i++) pt.rect(bf[5], head, i * 1.1 - 0.16, top - 1.2, i * 1.1 + 0.16, top + 0.6, 3.66, dark(knit, 0.14));
+    pt.box(head, -4.4, top - 2.6, -3.8, 4.4, top - 1.3, 3.8, cuff); pt.box(head, -0.95, top + 1, -0.95, 0.95, top + 2.7, 0.95, pom);
+  } else if (h === "earmuffs") {
+    const band = c(0, "#7e93b8"), fluff = c(1, "#f7f3f5");
+    pt.box(head, -4.5, top + 0.05, -0.45, 4.5, top + 0.55, 0.45, band); pt.box(head, -4.75, 3.6, -0.4, -4.25, top + 0.55, 0.4, band); pt.box(head, 4.25, 3.6, -0.4, 4.75, top + 0.55, 0.4, band);
+    pt.box(head, -5.6, 1.9, -1.6, -4.3, 4.9, 1.6, fluff); pt.box(head, 4.3, 1.9, -1.6, 5.6, 4.9, 1.6, fluff);
+  } else if (h === "bunny_ears") {
+    const fur = c(0, "#f5f5f7"), pink = c(1, "#f2a7c3"); pt.box(head, -4.3, top - 0.1, -0.5, 4.3, top + 0.45, 0.5, dark(pink, 0.06));
+    for (const side of [-1, 1]) { const e = RZ(T(head, side * 1.9, top + 0.3, 0), -side * 0.18), ef = pt.box(e, -0.85, 0, -0.4, 0.85, 5.2, 0.4, fur); pt.rect(ef[5], e, -0.45, 0.6, 0.45, 4.6, 0.41, pink); }
+  } else if (h === "bucket_hat") {
+    const canvas = c(0, "#d8c69a"); pt.box(head, -5.4, top - 1.3, -4.8, 5.4, top - 0.9, 4.8, dark(canvas, 0.06));
+    const cf = pt.box(head, -4.3, top - 1, -3.7, 4.3, top + 1.6, 3.7, canvas); pt.rect(cf[5], head, -4.3, top - 0.9, 4.3, top - 0.3, 3.71, c(1, "#8e7b52"));
+  }
+}
+
+/** A picture across the lid: on the outside (read from behind the laptop: its left is the laptop's +x) or on the screen. */
+function lidArt(pt, f, lid, a, y, outside) {
+  if (!f || !a) return;
+  const w = a.w, h = a.h, px = Math.min(7.8 / w, 5 / h), x0 = -w * px / 2, z1 = 3 + h * px / 2;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const c = a.px[j * w + i]; if (!c) continue;
+    let xa = x0 + i * px, xb = x0 + (i + 1) * px; if (outside) { xa = -xa; xb = -xb; }
+    pt.rectY(f, lid, Math.min(xa, xb), z1 - (j + 1) * px, Math.max(xa, xb), z1 - j * px, y, c);
+  }
+}
+
+function laptop(pt, L, ox, oy, oz, lyaw, size) {
+  const kind = L.laptop || "silver", gamer = kind === "gamer", white = kind === "white_beast", pump = kind === "pumpkin_laptop";
+  const c = (i, d) => (L.lapCols && L.lapCols[i]) || d;
+  const th = white ? 0.95 : 0.6, lt = white ? 0.62 : 0.42;
+  const m = SC(RY(T(I(), ox, oy, oz), lyaw), size * (white ? 1.18 : 1));
+  const body = c(0, gamer ? "#1c1f27" : white ? "#f6f7fa" : pump ? "#e8862a" : "#a9b4c8"), edge = c(1, gamer ? "#0e1015" : white ? "#d6dae1" : pump ? "#b65e14" : "#7c879c");
+  const base = pt.box(m, -4.4, 0, -3, 4.4, th, 3, body);
+  const rgb = ["#ff4a5a", "#ffa34a", "#ffe14a", "#4aff8a", "#4ac8ff", "#b04aff"];
+  for (let row = 0; row < 3; row++) for (let col = 0; col < 6; col++) { const x0 = -3.6 + col * 1.22, z0 = -2.5 + row; pt.rectY(base[3], m, x0, z0, x0 + 1, z0 + 0.8, th + 0.01, gamer ? rgb[col] : pump ? "#3a1a06" : "#2a3044"); }
+  pt.rectY(base[3], m, -1.4, 0.9, 1.4, 2.5, th + 0.01, edge);
+  const lid = RX(T(m, 0, th, -3), -1.86);
+  pt.box(lid, -3.6, -0.15, -0.3, 3.6, 0.3, 0.3, pump ? "#3f7a26" : edge);
+  const lf = pt.box(lid, -4.4, 0, 0, 4.4, lt, 6, body);
+  pt.rectY(lf[2], lid, -3.9, 0.5, 3.9, 5.5, -0.01, gamer ? "#0b1a2e" : pump ? "#2a1406" : "#1f3466");
+  if (L.screen) lidArt(pt, lf[2], lid, L.screen, -0.02, false);
+  const y = lt + 0.01;
+  if (L.lid) lidArt(pt, lf[3], lid, L.lid, y, true);
+  else if (pump) { const g = c(2, "#ffd25a"); pt.decal(lf[3], lid, [[-2.6,y,4.4],[-0.9,y,4.4],[-1.75,y,3.1],[-1.75,y,3.1]], g); pt.decal(lf[3], lid, [[0.9,y,4.4],[2.6,y,4.4],[1.75,y,3.1],[1.75,y,3.1]], g); pt.decal(lf[3], lid, [[-2.8,y,2.4],[2.8,y,2.4],[2.1,y,1.2],[-2.1,y,1.2]], g); }
+  else {
+    const lc = c(2, gamer ? "#39d6ff" : white ? "#d11b26" : "#3f6fe0"), r = white ? 1.4 : 1.2, hh = r * 0.58;
+    pt.decal(lf[3], lid, [[0,y,3.2-r],[r,y,3.2-hh],[0,y,3.2],[-r,y,3.2-hh]], mix(lc, "#ffffff", 0.35));
+    pt.decal(lf[3], lid, [[-r,y,3.2-hh],[0,y,3.2],[0,y,3.2+r],[-r,y,3.2+hh]], lc);
+    pt.decal(lf[3], lid, [[0,y,3.2],[r,y,3.2-hh],[r,y,3.2+hh],[0,y,3.2+r]], dark(lc, 0.3));
+    if (gamer) { pt.rectY(lf[3], lid, -4.1, 0.4, -3.8, 5.6, y, lc); pt.rectY(lf[3], lid, 3.8, 0.4, 4.1, 5.6, y, lc); }
+  }
+  if (L.sticker) {
+    const s = L.sticker, px = 2.2 / Math.max(s.w, s.h), x0 = 2.6 + s.w * px / 2, z1 = 4.6 + s.h * px / 2;
+    for (let j = 0; j < s.h; j++) for (let i = 0; i < s.w; i++) { const col = s.px[j * s.w + i]; if (col) pt.rectY(lf[3], lid, x0 - (i + 1) * px, z1 - (j + 1) * px, x0 - i * px, z1 - j * px, y + 0.005, col); }
+  }
+  for (const [a, b] of [[-3.8, -2.5], [3, -2.5], [-3.8, 1.8], [3, 1.8]]) pt.box(m, a, -0.2, b, a + 0.8, 0, b + 0.7, "#15151a");
+}
+
+// the preview canvas: spins slowly, or follows a drag
+const view = $("view"), vctx = view.getContext("2d"), painter = new Painter(vctx);
+let yaw = -0.5, spin = true, dragX = null;
+view.addEventListener("pointerdown", e => { dragX = e.clientX; spin = false; $("vSpin").textContent = "Spin: off"; view.setPointerCapture(e.pointerId); view.style.cursor = "grabbing"; });
+view.addEventListener("pointermove", e => { if (dragX != null) { yaw += (e.clientX - dragX) * 0.012; dragX = e.clientX; } });
+view.addEventListener("pointerup", () => { dragX = null; view.style.cursor = "grab"; });
+$("vSpin").onclick = () => { spin = !spin; $("vSpin").textContent = "Spin: " + (spin ? "on" : "off"); };
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { yaw = +b.dataset.view; spin = false; $("vSpin").textContent = "Spin: off"; });
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  if (spin) yaw += dt * 0.6;
+  vctx.clearRect(0, 0, view.width, view.height);
+  vctx.fillStyle = "rgba(0,0,0,0.28)"; vctx.beginPath(); vctx.ellipse(280, 474, 140, 24, 0, 0, Math.PI * 2); vctx.fill();
+  painter.anchor(280, 470, 19);
+  drawKobby(painter, currentLook(), yaw, now / 1000);
+  painter.flush();
+  requestAnimationFrame(frame);
+}
+
+// ================================================================ the pixel editor (stickers 12/16, laptop lid and screen 24 x 16)
+function pixelEditor(title, w, h, sizes, onChange) {
+  const root = el("div", "pe"), head = el("div", "row");
+  head.append(el("b", null, title));
+  let sizeSel = null;
+  if (sizes) { sizeSel = el("select"); sizeSel.style.width = "auto"; fill(sizeSel, sizes.map(s => [s, s + " x " + s])); sizeSel.value = String(w); head.append(sizeSel); }
+  const count = el("span", "hint"); head.append(count);
+  const canvas = el("canvas"); const tools = el("div", "row tools"); tools.style.margin = "8px 0";
+  const colour = el("input"); colour.type = "color"; colour.value = "#ffd24a";
+  const recent = el("div", "row"); recent.style.gap = "4px";
+  let px = new Array(w * h).fill(null), tool = "pen", mirror = false, undo = [], redo = [], last = null, down = 0;
+  const btns = {};
+  const mk = (id, text, fn, tip) => { const b = el("button", null, text); b.title = tip || text; b.onclick = fn; tools.append(b); btns[id] = b; return b; };
+  const setTool = t => { tool = t; for (const k of ["pen", "erase", "fill", "pick"]) btns[k].classList.toggle("on", k === t); };
+  mk("pen", "Pencil", () => setTool("pen")); mk("erase", "Eraser", () => setTool("erase")); mk("fill", "Fill", () => setTool("fill"), "Fill an area"); mk("pick", "Pick colour", () => setTool("pick"));
+  mk("mirror", "Mirror", () => { mirror = !mirror; btns.mirror.classList.toggle("on", mirror); }, "Paint both halves at once");
+  mk("undo", "Undo", () => { if (undo.length) { redo.push(px.slice()); px = undo.pop(); changed(); } }, "Undo (Ctrl+Z)");
+  mk("redo", "Redo", () => { if (redo.length) { undo.push(px.slice()); px = redo.pop(); changed(); } }, "Redo (Ctrl+Y)");
+  for (const [t, dx, dy] of [["←", -1, 0], ["→", 1, 0], ["↑", 0, -1], ["↓", 0, 1]]) mk("m" + t, t, () => { save(); const n = new Array(w * h).fill(null); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const X = x - dx, Y = y - dy; if (X >= 0 && Y >= 0 && X < w && Y < h) n[y * w + x] = px[Y * w + X]; } px = n; changed(); }, "Move the picture");
+  mk("clear", "Clear", () => { save(); px = new Array(w * h).fill(null); changed(); });
+  const file = el("input"); file.type = "file"; file.accept = "image/*"; file.style.display = "none";
+  const maxC = el("select"); maxC.style.width = "auto"; fill(maxC, [[16, "16 colours"], [8, "8 colours"], [4, "4 colours"]]);
+  const imp = el("button", null, "Load a picture"); imp.onclick = () => file.click();
+  const row2 = el("div", "row"); row2.append(el("span", "hint", "Colour"), colour, recent, imp, maxC, file);
+  root.append(head, tools, canvas, row2);
+  function cell() { return Math.max(8, Math.floor(Math.min(384 / w, 288 / h))); }
+  function layout() { const c = cell(); canvas.width = w * c; canvas.height = h * c; }
+  function save() { undo.push(px.slice()); if (undo.length > 60) undo.shift(); redo = []; }
+  function changed() { paint(); onChange(); }
+  function paint() {
+    const g = canvas.getContext("2d"), c = cell();
+    for (let i = 0; i < w * h; i++) { const x = i % w, y = Math.floor(i / w); g.fillStyle = (x + y) % 2 ? "#1a2232" : "#141b28"; g.fillRect(x * c, y * c, c, c); if (px[i]) { g.fillStyle = px[i]; g.fillRect(x * c, y * c, c, c); } }
+    g.strokeStyle = "rgba(255,255,255,0.05)"; for (let x = 1; x < w; x++) { g.beginPath(); g.moveTo(x * c + 0.5, 0); g.lineTo(x * c + 0.5, h * c); g.stroke(); }
+    for (let y = 1; y < h; y++) { g.beginPath(); g.moveTo(0, y * c + 0.5); g.lineTo(w * c, y * c + 0.5); g.stroke(); }
+    if (mirror) { g.strokeStyle = "rgba(91,140,255,0.6)"; g.beginPath(); g.moveTo(w * c / 2, 0); g.lineTo(w * c / 2, h * c); g.stroke(); }
+    count.textContent = new Set(px.filter(Boolean)).size + " / 16 colours";
+  }
+  function remember(c) { const list = (recall("kobalt-recent-colours") || []).filter(x => x !== c); list.unshift(c); store("kobalt-recent-colours", list.slice(0, 10)); showRecent(); }
+  function showRecent() { recent.innerHTML = ""; for (const c of recall("kobalt-recent-colours") || []) { const s = el("span", "sw"); s.style.background = c; s.title = c; s.onclick = () => colour.value = c; recent.append(s); } }
+  function put(x, y, c) { px[y * w + x] = c; if (mirror) px[y * w + (w - 1 - x)] = c; }
+  function floodFill(x, y, c) { const from = px[y * w + x]; if (from === c) return; const st = [[x, y]]; while (st.length) { const [a, b] = st.pop(); if (a < 0 || b < 0 || a >= w || b >= h || px[b * w + a] !== from) continue; px[b * w + a] = c; st.push([a + 1, b], [a - 1, b], [a, b + 1], [a, b - 1]); } }
+  function at(e) { const r = canvas.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * w), Math.floor((e.clientY - r.top) / r.height * h)]; }
+  function stroke(e) {
+    const [x, y] = at(e); if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const c = down === 2 || tool === "erase" ? null : colour.value;
+    const from = last || [x, y], n = Math.max(Math.abs(x - from[0]), Math.abs(y - from[1]), 1);
+    for (let i = 0; i <= n; i++) put(Math.round(from[0] + (x - from[0]) * i / n), Math.round(from[1] + (y - from[1]) * i / n), c);
+    last = [x, y]; changed();
+  }
+  canvas.addEventListener("pointerdown", e => {
+    const [x, y] = at(e); if (x < 0 || y < 0 || x >= w || y >= h) return;
+    canvas.focus();
+    if (tool === "pick" && e.button !== 2) { if (px[y * w + x]) colour.value = px[y * w + x]; setTool("pen"); return; }
+    save();
+    if (tool === "fill" && e.button !== 2) { floodFill(x, y, colour.value); if (mirror) floodFill(w - 1 - x, y, colour.value); remember(colour.value); changed(); return; }
+    down = e.button === 2 ? 2 : 1; last = null; canvas.setPointerCapture(e.pointerId); stroke(e); if (down === 1 && tool === "pen") remember(colour.value);
+  });
+  canvas.addEventListener("pointermove", e => { if (down) stroke(e); });
+  canvas.addEventListener("pointerup", () => { down = 0; last = null; });
+  canvas.addEventListener("contextmenu", e => e.preventDefault());
+  canvas.tabIndex = 0;
+  canvas.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "z") { btns.undo.click(); e.preventDefault(); } if ((e.ctrlKey || e.metaKey) && e.key === "y") { btns.redo.click(); e.preventDefault(); } });
+  file.onchange = () => {
+    const f = file.files[0]; file.value = ""; if (!f || f.size > 8 * 1048576) return;
+    const img = new Image(), u = URL.createObjectURL(f);
+    img.onload = () => {
+      const c = el("canvas"); c.width = w; c.height = h; const g = c.getContext("2d");
+      const s = Math.min(w / img.width, h / img.height), iw = img.width * s, ih = img.height * s; g.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
+      const d = g.getImageData(0, 0, w, h).data; save();
+      px = []; for (let i = 0; i < w * h; i++) px.push(d[i * 4 + 3] < 128 ? null : "#" + [0, 1, 2].map(k => d[i * 4 + k].toString(16).padStart(2, "0")).join(""));
+      squeeze(+maxC.value); URL.revokeObjectURL(u); changed();
+    };
+    img.src = u;
+  };
+  function squeeze(max) {
+    const count = {}; px.forEach(c => { if (c) count[c] = (count[c] || 0) + 1; });
+    const keep = Object.keys(count).sort((a, b) => count[b] - count[a]).slice(0, max).map(c => [c, hexRgb(c)]);
+    if (!keep.length) return;
+    px = px.map(c => { if (!c) return null; const v = hexRgb(c); let best = keep[0][0], bd = 1e9; for (const [k, q] of keep) { const dd = (q[0] - v[0]) ** 2 + (q[1] - v[1]) ** 2 + (q[2] - v[2]) ** 2; if (dd < bd) { bd = dd; best = k; } } return best; });
+  }
+  if (sizeSel) sizeSel.onchange = () => { const n = +sizeSel.value; save(); const old = px, ow = w, oh = h; w = h = n; px = new Array(w * h).fill(null); for (let y = 0; y < Math.min(h, oh); y++) for (let x = 0; x < Math.min(w, ow); x++) px[y * w + x] = old[y * ow + x]; layout(); changed(); };
+  layout(); setTool("pen"); showRecent(); paint();
+  return {
+    root,
+    /** The picture the way the feed carries it, or null when it's empty / has too many colours. */
+    data() { const pal = [...new Set(px.filter(Boolean))]; if (!pal.length || pal.length > 16) return null; return {w, h, palette: pal, px: px.map(c => c ? String.fromCharCode(97 + pal.indexOf(c)) : ".").join("")}; },
+    colours() { return new Set(px.filter(Boolean)).size; },
+    /** For the preview: w, h and a colour per pixel (null = clear). */
+    art() { return px.some(Boolean) ? {w, h, px: px.slice()} : null; },
+    load(d) { if (!d) { px = new Array(w * h).fill(null); paint(); return; } if (sizeSel && d.w !== w) { sizeSel.value = String(d.w); } w = d.w; h = d.h; px = [...d.px].map(ch => ch === "." ? null : d.palette[ch.charCodeAt(0) - 97] || null); layout(); paint(); },
+    raw() { return {w, h, px}; }
+  };
+}
+
+// ================================================================ the challenge form
+fill($("cTask"), TASKS);
+fill($("cIcon"), ITEMS.map(i => ["minecraft:" + i, i.replace(/_/g, " ")]));
+fill($("rIcon"), ITEMS.map(i => ["minecraft:" + i, i.replace(/_/g, " ")]));
+$("rIcon").value = "minecraft:paper";
+$("cStart").value = localInput(new Date());
+let rarity = "gold", slot = "STICKER", editing = null;
+for (const [v, t, c] of RARITY) { const b = el("button", null, t); b.dataset.r = v; b.style.color = c; b.onclick = () => { rarity = v; markRarity(); update(); }; $("rRarity").append(b); }
+function markRarity() { $("rRarity").querySelectorAll("button").forEach(b => { const on = b.dataset.r === rarity, c = RARITY.find(r => r[0] === b.dataset.r)[2]; b.classList.toggle("on", on); b.style.background = on ? c : "transparent"; b.style.color = on ? "#0b0f17" : c; b.style.borderColor = c; }); }
+markRarity();
+$("rSlot").querySelectorAll("button").forEach(b => b.onclick = () => { slot = b.dataset.slot; slotChanged(); });
+
+const stickerEd = pixelEditor("Sticker", 12, 12, [12, 16], update);
+const lidEd = pixelEditor("Outside of the lid", 24, 16, null, update);
+const screenEd = pixelEditor("Screen (inside)", 24, 16, null, update);
+const lidOn = el("input"), screenOn = el("input"); lidOn.type = screenOn.type = "checkbox";
+lidOn.onchange = screenOn.onchange = () => { lidEd.root.style.display = lidOn.checked ? "" : "none"; screenEd.root.style.display = screenOn.checked ? "" : "none"; update(); };
+
+function slotChanged() {
+  $("rSlot").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.slot === slot));
+  const m = MODELS[slot];
+  $("rModelBox").style.display = slot === "HEAD" || slot === "LAPTOP" ? "" : "none";
+  if (slot === "HEAD" || slot === "LAPTOP") fill($("rModel"), Object.entries(m).map(([k, v]) => [k, v[0]]));
+  buildColours();
+  const art = $("rArt"); art.innerHTML = "";
+  if (slot === "STICKER") art.append(stickerEd.root);
+  if (slot === "LAPTOP") {
+    // clicking the words ticks the box too
+    const r1 = el("label", "row"), r2 = el("label", "row");
+    r1.style.cssText = r2.style.cssText = "display:flex; justify-content:flex-start; gap:8px; cursor:pointer; color:var(--text); font-size:13px; margin:0";
+    r1.append(lidOn, document.createTextNode("Picture on the outside of the lid")); r2.append(screenOn, document.createTextNode("Picture on the screen (inside)")); r2.style.marginTop = "8px";
+    art.append(r1, lidEd.root, r2, screenEd.root);
+    lidEd.root.style.display = lidOn.checked ? "" : "none"; screenEd.root.style.display = screenOn.checked ? "" : "none";
+  }
+  update();
+}
+function buildColours(saved) {
+  const box = $("rColours"); box.innerHTML = "";
+  const m = MODELS[slot]; if (!m) return;
+  const def = slot === "OUTFIT" ? m.custom : m[$("rModel").value] || Object.values(m)[0];
+  const row = el("div", "row");
+  def[1].forEach(([name, c], i) => { const d = el("div"); d.append(el("label", null, name)); const inp = el("input"); inp.type = "color"; inp.value = (saved && saved[i]) || c; inp.oninput = update; d.append(inp); row.append(d); });
+  const reset = el("button", "ghost small", "Reset colours"); reset.onclick = () => buildColours(); row.append(reset);
+  box.append(el("label", null, "Colours"), row); update();
+}
+$("rModel").onchange = () => buildColours();
+function colours() { return Array.from($("rColours").querySelectorAll("input[type=color]")).map(i => i.value); }
+
+/** What the preview wears: this reward on him, everything else as normal. */
+function currentLook() {
+  const L = {};
+  if (slot === "HEAD") { L.head = $("rModel").value; L.headCols = colours(); }
+  if (slot === "LAPTOP") { L.laptop = $("rModel").value; L.lapCols = colours(); if (lidOn.checked) L.lid = lidEd.art(); if (screenOn.checked) L.screen = screenEd.art(); }
+  if (slot === "OUTFIT") L.fitCols = colours();
+  if (slot === "STICKER") L.sticker = stickerEd.art();
+  return L;
+}
+
+// dates
+function times() {
+  const start = new Date($("cStart").value), days = Math.max(0, Math.floor(+$("cDays").value || 0)), hours = Math.max(0, Math.floor(+$("cHours").value || 0));
+  return {start, days, hours, end: new Date(start.getTime() + (days * 24 + hours) * 3600000)};
+}
+document.querySelectorAll("[data-start]").forEach(b => b.onclick = () => {
+  const d = new Date(); d.setSeconds(0, 0);
+  if (b.dataset.start === "tomorrow") { d.setDate(d.getDate() + 1); d.setHours(0, 0); }
+  if (b.dataset.start === "monday") { d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); d.setHours(0, 0); }
+  if (b.dataset.start === "saturday") { d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7)); d.setHours(0, 0); }
+  $("cStart").value = localInput(d); update();
+});
+document.querySelectorAll("[data-len]").forEach(b => b.onclick = () => { $("cDays").value = b.dataset.len; $("cHours").value = 0; update(); });
+function when(ms) { const m = Math.round(Math.abs(ms) / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24); return d ? d + " day" + (d === 1 ? "" : "s") + (h % 24 ? " " + h % 24 + " h" : "") : h ? h + " h " + m % 60 + " min" : m + " min"; }
+
+function update() {
+  counters();
+  const t = times(), now = Date.now();
+  document.querySelectorAll("[data-len]").forEach(b => b.classList.toggle("on", +b.dataset.len === t.days && t.hours === 0));
+  if (isNaN(t.start)) $("cTime").textContent = "Pick when it starts.";
+  else {
+    const len = t.days * 24 + t.hours;
+    $("cTime").textContent = (len <= 0 ? "Give it some time! " : "Players get " + when(len * 3600000) + " to finish it. ") + "It " + (t.start <= now ? "starts as soon as it's published" : "starts in " + when(t.start - now)) +
+      " and ends " + t.end.toLocaleString([], {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"}) + ".";
+  }
+  // the pop-up and the list row, as the game shows them
+  const title = clean($("cTitle").value, 48) || "Challenge title", task = TASKS.find(r => r[0] === $("cTask").value)[1], r = RARITY.find(x => x[0] === rarity);
+  $("mToast").innerHTML = ""; $("mToast").style.borderColor = $("cTheme").value;
+  const tb = el("b", null, "New event!"); tb.style.color = $("cTheme").value;
+  $("mToast").append(tb, el("br"), title, el("br"), task + ": " + (+$("cGoal").value || 0).toLocaleString());
+  $("mRow").innerHTML = "";
+  const tag = el("span", "tag", r[1]); tag.style.background = r[2] + "33"; tag.style.color = r[2];
+  $("mRow").append(tag, clean($("rName").value, 40) || "Look's name", el("br"), clean($("rDesc").value, 120) || "Look's description");
+  keepDraft();
+}
+for (const id of ["cTitle", "cDesc", "cTask", "cGoal", "cStart", "cDays", "cHours", "cTheme", "rName", "rDesc", "cIcon", "rIcon", "cFeatured"]) $(id).addEventListener("input", update);
+
+/** The challenge and its reward, checked like the robot and the mod check them. */
+function buildChallenge() {
+  const t = times(), title = clean($("cTitle").value, 48), name = clean($("rName").value, 40), goal = Math.floor(+$("cGoal").value);
+  if (!title) throw "Give the challenge a title.";
+  if (!name) throw "Give the reward a name.";
+  if (!(goal >= 1 && goal <= 1e9)) throw "'How many' has to be from 1 to 1,000,000,000.";
+  if (isNaN(t.start) || t.end <= t.start) throw "Pick when it starts and how long it lasts.";
+  if (t.end - t.start > 366 * 86400000) throw "A challenge can last at most a year.";
+  const look = {id: editing ? editing.look : "c-" + slug(name), name, slot, rarity, description: clean($("rDesc").value, 120), icon: $("rIcon").value};
+  if (slot === "STICKER") { const s = stickerEd.data(); if (!s) throw stickerEd.colours() > 16 ? "The sticker has more than 16 colours." : "Paint the sticker first."; look.sticker = s; }
+  else if (slot === "OUTFIT") { look.base = "custom"; look.colors = colours(); }
+  else {
+    look.base = $("rModel").value; look.colors = colours();
+    if (slot === "LAPTOP" && lidOn.checked) { const d = lidEd.data(); if (!d) throw lidEd.colours() > 16 ? "The lid picture has more than 16 colours." : "Paint the lid picture, or untick it."; look.lid = d; }
+    if (slot === "LAPTOP" && screenOn.checked) { const d = screenEd.data(); if (!d) throw screenEd.colours() > 16 ? "The screen picture has more than 16 colours." : "Paint the screen picture, or untick it."; look.screen = d; }
+  }
+  const ev = {id: editing ? editing.event : "e-" + slug(title), title, description: clean($("cDesc").value, 300), theme: $("cTheme").value, start: t.start.toISOString(),
+    end: t.end.toISOString(), task: $("cTask").value, goal, icon: $("cIcon").value, rewards: [look.id], featured: $("cFeatured").checked};
+  return {ev, look};
+}
+$("cAdd").onclick = () => {
+  try {
+    const {ev, look} = buildChallenge();
+    changes.events = changes.events.filter(e => e.id !== ev.id); changes.cosmetics = changes.cosmetics.filter(c => c.id !== look.id);
+    changes.events.push(ev); changes.cosmetics.push(look); saveChanges();
+    msg("cMsg", "ok", (editing ? "Saved your edit of \"" : "Added \"") + ev.title + "\" with its reward \"" + look.name + "\". Click Publish at the bottom when you're ready.");
+    resetChallenge(true);
+  } catch (e) { msg("cMsg", "err", String(e)); }
+};
+function resetChallenge(keepMsg) {
+  editing = null; $("cHeading").textContent = "New challenge"; $("cAdd").textContent = "Add to my changes";
+  for (const id of ["cTitle", "cDesc", "rName", "rDesc"]) $(id).value = "";
+  $("cGoal").value = 500; $("cStart").value = localInput(new Date()); $("cDays").value = 7; $("cHours").value = 0;
+  stickerEd.load(null); lidEd.load(null); screenEd.load(null); lidOn.checked = screenOn.checked = false;
+  slot = "STICKER"; slotChanged(); if (!keepMsg) $("cMsg").className = "msg";
+}
+$("cReset").onclick = () => resetChallenge();
+
+/** Puts a challenge (and its reward) into the form, to change it. copy: as a new one. */
+function editChallenge(ev, look, copy) {
+  document.querySelector('nav button[data-tab="tChallenge"]').click();
+  editing = copy ? null : {event: ev.id, look: look ? look.id : "c-" + slug(ev.title)};
+  $("cHeading").textContent = copy ? "New challenge (a copy)" : "Editing: " + ev.title; $("cAdd").textContent = copy ? "Add to my changes" : "Save my edit";
+  $("cTitle").value = ev.title; $("cDesc").value = ev.description || ""; $("cTask").value = ev.task; $("cGoal").value = ev.goal; $("cTheme").value = ev.theme || "#5b8cff";
+  $("cIcon").value = ev.icon || "minecraft:clock"; $("cFeatured").checked = !!ev.featured;
+  const s = new Date(ev.start), e = new Date(ev.end), hrs = Math.round((e - s) / 3600000);
+  $("cStart").value = localInput(copy ? new Date() : s); $("cDays").value = Math.floor(hrs / 24); $("cHours").value = hrs % 24;
+  if (look) {
+    $("rName").value = look.name; $("rDesc").value = look.description || ""; $("rIcon").value = look.icon || "minecraft:paper"; rarity = look.rarity || "gold"; markRarity();
+    lidOn.checked = !!look.lid; screenOn.checked = !!look.screen;
+    slot = look.slot || "STICKER"; slotChanged();
+    if (look.base && (slot === "HEAD" || slot === "LAPTOP")) $("rModel").value = look.base;
+    buildColours(look.colors);
+    stickerEd.load(look.sticker || null); lidEd.load(look.lid || null); screenEd.load(look.screen || null);
+  }
+  update(); window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+// ================================================================ news
+$("nDate").value = localDay(new Date());
+let editingNews = null;
+function newsPreview() {
+  counters();
+  const k = $("nKind"), kind = k.options[k.selectedIndex].text.split(" ")[0], v = clean($("nVersion").value, 20);
+  $("mNews").textContent = "[" + (kind === "New" ? "New look" : kind) + (v ? " " + v : "") + "]" + ($("nPinned").checked ? "  Pinned" : "") + "  NEW            " + ($("nDate").value || "") + "\n" +
+    (clean($("nTitle").value, 80) || "Title") + "\n" + (clean($("nBody").value, 2000, true) || "");
+  keepDraft();
+}
+for (const id of ["nTitle", "nKind", "nVersion", "nDate", "nPinned", "nBody"]) $(id).addEventListener("input", newsPreview);
+$("nAdd").onclick = () => {
+  const title = clean($("nTitle").value, 80);
+  if (!title) return msg("nMsg", "err", "Give the post a title.");
+  const p = {id: editingNews || "n-" + slug(title), date: $("nDate").value || localDay(new Date()), kind: $("nKind").value, title, body: clean($("nBody").value, 2000, true),
+    version: clean($("nVersion").value, 20), pinned: $("nPinned").checked};
+  changes.news = changes.news.filter(n => n.id !== p.id); changes.news.push(p); saveChanges();
+  msg("nMsg", "ok", (editingNews ? "Saved your edit of \"" : "Added the post \"") + title + "\". Click Publish at the bottom when you're ready.");
+  resetNews(true);
+};
+function resetNews(keepMsg) { editingNews = null; $("nHeading").textContent = "New news post"; $("nAdd").textContent = "Add to my changes"; for (const id of ["nTitle", "nBody", "nVersion"]) $(id).value = ""; $("nPinned").checked = false; $("nDate").value = localDay(new Date()); if (!keepMsg) $("nMsg").className = "msg"; newsPreview(); }
+$("nReset").onclick = () => resetNews();
+function editNews(n) {
+  document.querySelector('nav button[data-tab="tNews"]').click();
+  editingNews = n.id; $("nHeading").textContent = "Editing: " + n.title; $("nAdd").textContent = "Save my edit";
+  $("nTitle").value = n.title; $("nKind").value = n.kind; $("nVersion").value = n.version || ""; $("nDate").value = n.date || localDay(new Date()); $("nPinned").checked = !!n.pinned; $("nBody").value = n.body || "";
+  newsPreview();
+}
+
+// ================================================================ my changes (kept in this browser until published) and publishing
+let changes = recall("kobalt-changes") || {events: [], cosmetics: [], news: [], remove: []};
+for (const k of ["events", "cosmetics", "news", "remove"]) if (!Array.isArray(changes[k])) changes[k] = [];
+function saveChanges() { store("kobalt-changes", changes); bar(); }
+function bar() {
+  const parts = [changes.events.length && changes.events.length + " challenge" + (changes.events.length === 1 ? "" : "s"), changes.news.length && changes.news.length + " news post" + (changes.news.length === 1 ? "" : "s"),
+    changes.remove.length && changes.remove.length + " to remove"].filter(Boolean);
+  $("bWhat").innerHTML = parts.length ? "Ready to publish: <b></b>" : "No changes yet.";
+  if (parts.length) $("bWhat").querySelector("b").textContent = parts.join(", ");
+  for (const id of ["bPublish", "bDownload", "bClear"]) $(id).disabled = !parts.length;
+}
+function updateFile() {
+  const u = {kobalt: "update", made: new Date().toISOString(), events: changes.events, cosmetics: changes.cosmetics, news: changes.news, remove: changes.remove};
+  const d = new Date(), name = "update-" + localDay(d).replace(/-/g, "") + "-" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + ".json";
+  return {name, text: JSON.stringify(u)};
+}
+$("bPublish").onclick = () => {
+  const f = updateFile();
+  const url = "https://github.com/" + REPO + "/new/main/updates?filename=" + encodeURIComponent(f.name) + "&value=" + encodeURIComponent(f.text);
+  if (url.length > 7500) { $("bDownload").click(); window.open("https://github.com/" + REPO + "/upload/main/updates", "_blank", "noopener"); alert("This update is big, so it was saved as " + f.name + ". Drag it into the GitHub page that just opened, then click Commit changes."); }
+  else window.open(url, "_blank", "noopener");
+  if (confirm("Did you click \"Commit changes\" on GitHub?\n\nOK = yes, clear my changes here (the robot publishes them in about a minute).\nCancel = not yet, keep them.")) { changes = {events: [], cosmetics: [], news: [], remove: []}; saveChanges(); setTimeout(loadLive, 60000); }
+};
+$("bDownload").onclick = () => { const f = updateFile(), u = URL.createObjectURL(new Blob([f.text], {type: "application/json"})), a = el("a"); a.href = u; a.download = f.name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000); };
+$("bClear").onclick = () => { if (confirm("Throw away the changes you haven't published?")) { changes = {events: [], cosmetics: [], news: [], remove: []}; saveChanges(); } };
+
+// ================================================================ what's live
+async function loadLive() {
+  const box = $("lList"); box.innerHTML = "";
+  let feed;
+  try {
+    const r = await fetch("../kobalt-feed.json?" + Date.now(), {cache: "no-store"});
+    if (!r.ok) throw r.status;
+    feed = JSON.parse((await r.json()).payload);
+  } catch (e) { $("lStatus").textContent = location.protocol === "file:" ? "Open the editor from your site (kq1an.github.io/kobalt-events/editor) to see what's live." : "Nothing published yet (or the site is still updating)."; return; }
+  const now = Date.now();
+  $("lStatus").textContent = "Published " + new Date(feed.seq).toLocaleString() + " - " + feed.events.length + " challenge(s), " + feed.cosmetics.length + " look(s), " + feed.news.length + " news post(s).";
+  const looks = new Map(feed.cosmetics.map(c => [c.id, c]));
+  const row = (title, sub, cls, buttons) => { const d = el("div", "item"), a = el("div"); const t = el("div", "t", title); if (cls) t.classList.add(cls); a.append(t, el("div", "s", sub)); const b = el("div", "row"); for (const [label, fn, danger] of buttons) { const x = el("button", danger ? "danger small" : "ghost small", label); x.onclick = fn; b.append(x); } d.append(a, b); box.append(d); };
+  box.append(el("h2", null, "Challenges"));
+  if (!feed.events.length) box.append(el("p", "hint", "None."));
+  for (const e of feed.events) {
+    const s = Date.parse(e.start), en = Date.parse(e.end), live = s <= now && now < en, soon = now < s, look = looks.get((e.rewards || [])[0]);
+    row(e.title + (live ? "  - on now, ends in " + when(en - now) : soon ? "  - starts in " + when(s - now) : "  - over"), (TASKS.find(t => t[0] === e.task) || [0, e.task])[1] + ": " + e.goal + (look ? "  -  reward: " + look.name + " (" + look.rarity + ")" : ""),
+      live ? "status-live" : soon ? "status-soon" : "status-over",
+      [["Edit", () => editChallenge(e, look, false)], ["Copy", () => editChallenge(e, look, true)], ["Remove", () => { changes.remove.push(e.id); if (look) changes.remove.push(look.id); saveChanges(); }, true]]);
+  }
+  box.append(el("h2", null, "News"));
+  if (!feed.news.length) box.append(el("p", "hint", "None."));
+  for (const n of feed.news) row(n.title, n.kind + (n.version ? " " + n.version : "") + "  -  " + n.date + (n.pinned ? "  -  pinned" : ""), null,
+    [["Edit", () => editNews(n)], ["Remove", () => { changes.remove.push(n.id); saveChanges(); }, true]]);
+}
+
+// ================================================================ the draft of whatever's in the forms (this browser only)
+let drafting = false;
+function keepDraft() {
+  if (drafting) return;
+  store("kobalt-draft", {c: ["cTitle", "cDesc", "cTask", "cGoal", "cStart", "cDays", "cHours", "cTheme", "cIcon", "rName", "rDesc", "rIcon"].map(id => $(id).value), featured: $("cFeatured").checked,
+    rarity, slot, model: $("rModel").value, colours: colours(), sticker: stickerEd.raw(), lid: lidEd.raw(), screen: screenEd.raw(), lidOn: lidOn.checked, screenOn: screenOn.checked,
+    n: ["nTitle", "nKind", "nVersion", "nDate", "nBody"].map(id => $(id).value), pinned: $("nPinned").checked});
+}
+function restoreDraft() {
+  const d = recall("kobalt-draft"); if (!d) return;
+  drafting = true;
+  try {
+    ["cTitle", "cDesc", "cTask", "cGoal", "cStart", "cDays", "cHours", "cTheme", "cIcon", "rName", "rDesc", "rIcon"].forEach((id, i) => { if (d.c && d.c[i] != null) $(id).value = d.c[i]; });
+    $("cFeatured").checked = d.featured !== false; rarity = d.rarity || "gold"; markRarity(); slot = d.slot || "STICKER";
+    lidOn.checked = !!d.lidOn; screenOn.checked = !!d.screenOn; slotChanged();
+    if (d.model && (slot === "HEAD" || slot === "LAPTOP")) $("rModel").value = d.model;
+    buildColours(d.colours);
+    // pictures come back pixel for pixel
+    for (const [ed, r] of [[stickerEd, d.sticker], [lidEd, d.lid], [screenEd, d.screen]]) if (r && r.px) { const pal = [...new Set(r.px.filter(Boolean))]; ed.load({w: r.w, h: r.h, palette: pal, px: r.px.map(c => c ? String.fromCharCode(97 + pal.indexOf(c)) : ".").join("")}); }
+    ["nTitle", "nKind", "nVersion", "nDate", "nBody"].forEach((id, i) => { if (d.n && d.n[i] != null) $(id).value = d.n[i]; }); $("nPinned").checked = !!d.pinned;
+  } catch (e) {}
+  drafting = false;
+}
+
+slotChanged(); restoreDraft(); update(); newsPreview(); bar(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
